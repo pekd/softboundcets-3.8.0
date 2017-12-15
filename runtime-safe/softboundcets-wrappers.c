@@ -2009,6 +2009,10 @@ __WEAK_INLINE ssize_t softboundcets_read(int fd, void* buf, size_t count){
     __softboundcets_printf("[read] incorrect buffer size (%lu vs %lu)\n", size, bufsz);
     size = bufsz;
   }
+  if((char*)buf < base) {
+    __softboundcets_printf("[read] underflow in buf\n");
+    __softboundcets_abort();
+  }
   return read(fd, buf, size);
 }
 
@@ -2020,6 +2024,10 @@ __WEAK_INLINE ssize_t softboundcets_write(int fd, void* buf, size_t count){
   if(bufsz < size) {
     __softboundcets_printf("[write] incorrect buffer size (%lu vs %lu)\n", size, bufsz);
     size = bufsz;
+  }
+  if((char*)buf < base) {
+    __softboundcets_printf("[write] underflow in buf\n");
+    __softboundcets_abort();
   }
   return write(fd, buf, size);
 }

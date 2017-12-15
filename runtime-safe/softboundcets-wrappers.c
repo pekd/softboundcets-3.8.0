@@ -60,7 +60,7 @@
 #include <wchar.h>
 
 
-#include<netinet/in.h>
+#include <netinet/in.h>
 
 #include <assert.h>
 #include <ctype.h>
@@ -78,8 +78,8 @@
 #include <string.h>
 #include <signal.h>
 #include <stdarg.h>
-#include<stdio.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include <ttyent.h>
 #include <time.h>
@@ -392,6 +392,31 @@ __WEAK_INLINE int softboundcets_ungetc(int c,  FILE* stream){
 
 __WEAK_INLINE int 
 softboundcets_strncmp(const char* s1, const char* s2, size_t n){
+  char* base1 = (char*)__softboundcets_load_base_shadow_stack(1);
+  char* bound1 = (char*)__softboundcets_load_bound_shadow_stack(1);
+  char* base2 = (char*)__softboundcets_load_base_shadow_stack(2);
+  char* bound2 = (char*)__softboundcets_load_bound_shadow_stack(2);
+
+  if(s1 < base1) {
+    __softboundcets_printf("[strncmp] underflow in s1\n");
+    __softboundcets_abort();
+  }
+
+  if(s2 < base2) {
+    __softboundcets_printf("[strncmp] underflow in s2\n");
+    __softboundcets_abort();
+  }
+
+  size_t size1 = bound1 - s1;
+  size_t size2 = bound2 - s2;
+
+  size_t size = size1 < size2 ? size1 : size2;
+
+  if(size < n) {
+    __softboundcets_printf("[strncmp] incorrect size (%lu vs %lu)\n", n, size);
+    n = size;
+  }
+
   return strncmp(s1, s2, n);
 }
 
@@ -955,7 +980,7 @@ __WEAK_INLINE char* softboundcets_getcwd(char* buf, size_t size){
   char* bound = (char*)__softboundcets_load_bound_shadow_stack(1);
   
   if (buf < base || buf + size > bound){
-    __softboundcets_printf("[getcwd], overflow in buf in getcwd\n");
+    __softboundcets_printf("[getcwd] overflow in buf in getcwd\n");
     __softboundcets_abort();
   }
   
@@ -966,7 +991,7 @@ __WEAK_INLINE char* softboundcets_getcwd(char* buf, size_t size){
   char* bound = (char *) __softboundcets_load_bound_shadow_stack(1);
   
   if (buf < base || buf + size > bound){
-    __softboundcets_printf("[getcwd], overflow in buf in getcwd\n");
+    __softboundcets_printf("[getcwd] overflow in buf in getcwd\n");
     __softboundcets_abort();
   }
 
@@ -1192,8 +1217,8 @@ softboundcets_strncasecmp(const char* s1, const char* s2, size_t n){
   size_t size = size1 < size2 ? size1 : size2;
 
   if(size < n) {
-    n = size;
     __softboundcets_printf("[strncasecmp] incorrect size (%lu vs %lu)\n", n, size);
+    n = size;
   }
 
   return strncasecmp(s1, s2, n);
@@ -1976,12 +2001,27 @@ __WEAK_INLINE int softboundcets_open(const char *pathname, int flags){
 }
 
 __WEAK_INLINE ssize_t softboundcets_read(int fd, void* buf, size_t count){
-  
-  return read(fd, buf, count);
+  char* base = (char*)__softboundcets_load_base_shadow_stack(1);
+  char* bound = (char*)__softboundcets_load_bound_shadow_stack(1);
+  size_t bufsz = bound - base;
+  size_t size = count;
+  if(bufsz < size) {
+    __softboundcets_printf("[read] incorrect buffer size (%lu vs %lu)\n", size, bufsz);
+    size = bufsz;
+  }
+  return read(fd, buf, size);
 }
 
 __WEAK_INLINE ssize_t softboundcets_write(int fd, void* buf, size_t count){
-  return write(fd, buf, count);
+  char* base = (char*)__softboundcets_load_base_shadow_stack(1);
+  char* bound = (char*)__softboundcets_load_bound_shadow_stack(1);
+  size_t bufsz = bound - base;
+  size_t size = count;
+  if(bufsz < size) {
+    __softboundcets_printf("[write] incorrect buffer size (%lu vs %lu)\n", size, bufsz);
+    size = bufsz;
+  }
+  return write(fd, buf, size);
 }
 
 

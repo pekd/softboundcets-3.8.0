@@ -111,6 +111,37 @@ extern size_t* __softboundcets_global_lock;
 
 extern void __softboundcets_process_memory_total();
 
+#define USE_STACKTRACE
+
+#ifdef USE_STACKTRACE
+/* link with --export-dynamic (-E) */
+#include <execinfo.h>
+
+#define	STACKTRACE_SIZE 1024
+static void* stacktrace[STACKTRACE_SIZE];
+
+void __softboundcets_print_stacktrace(void)
+{
+	int size = backtrace(stacktrace, STACKTRACE_SIZE);
+	__softboundcets_printf("[backtrace] %d frames\n", size);
+	if(size > 0) {
+		int i;
+		char** symbols = backtrace_symbols(stacktrace, size);
+		if(symbols) {
+			for(i = 0; i < size; i++)
+				printf("#%d: %s\n", i, symbols[i]);
+			free(symbols);
+		} else {
+			for(i = 0; i < size; i++)
+				printf("#%d: %p\n", i, stacktrace[i]);
+		}
+	}
+}
+#else
+void __softboundcets_print_stacktrace(void)
+{
+}
+#endif
 
 
 __WEAK_INLINE void 
@@ -414,6 +445,7 @@ softboundcets_strncmp(const char* s1, const char* s2, size_t n){
 
   if(size < n) {
     __softboundcets_printf("[strncmp] incorrect size (%lu vs %lu)\n", n, size);
+    __softboundcets_print_stacktrace();
     n = size;
   }
 
@@ -1218,6 +1250,7 @@ softboundcets_strncasecmp(const char* s1, const char* s2, size_t n){
 
   if(size < n) {
     __softboundcets_printf("[strncasecmp] incorrect size (%lu vs %lu)\n", n, size);
+    __softboundcets_print_stacktrace();
     n = size;
   }
 
@@ -1237,6 +1270,7 @@ __WEAK_INLINE size_t softboundcets_strlen(const char* s){
   size_t len = strnlen(s, size);
   if((len == size) && (s[len] != '0')) {
     __softboundcets_printf("[strlen] s is unterminated\n");
+    __softboundcets_print_stacktrace();
   }
   return len;
 }
@@ -1286,6 +1320,7 @@ __WEAK_INLINE char* softboundcets_fgets(char* s, int size, FILE* stream){
   if(s + size > bound) {
     fgets_size = bound - s;
     __softboundcets_printf("[fgets] incorrect size specified (%d vs %lu)\n", size, fgets_size);
+    __softboundcets_print_stacktrace();
   }
 
   if(fgets_size > INT_MAX) {
@@ -2007,6 +2042,7 @@ __WEAK_INLINE ssize_t softboundcets_read(int fd, void* buf, size_t count){
   size_t size = count;
   if(bufsz < size) {
     __softboundcets_printf("[read] incorrect buffer size (%lu vs %lu)\n", size, bufsz);
+    __softboundcets_print_stacktrace();
     size = bufsz;
   }
   if((char*)buf < base) {
@@ -2023,6 +2059,7 @@ __WEAK_INLINE ssize_t softboundcets_write(int fd, void* buf, size_t count){
   size_t size = count;
   if(bufsz < size) {
     __softboundcets_printf("[write] incorrect buffer size (%lu vs %lu)\n", size, bufsz);
+    __softboundcets_print_stacktrace();
     size = bufsz;
   }
   if((char*)buf < base) {
